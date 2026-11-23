@@ -1,4 +1,5 @@
 import { quickPlayback, rememberPlaybackPosition, restorePlaybackPosition } from './playback-position';
+import { handOffToPlexApp } from './shield-handoff';
 import { installReelRecorder, refreshReelControls, toggleReelRecording, toggleReelCamera, stopReelRecording, reelRecordingActive } from './reel-recorder';
 import { paintStoreLoading, updateStoreLoading, showStoreLoadingFailure } from './store-loading';
 import { mobileStoreActive } from './mobile-store';
@@ -3400,6 +3401,11 @@ export async function launchVideoPlayback(movie: Movie, overrideItemId?: string,
   if (!jellyfinUrl || !token) {
     logToConsole(`[Video] No ${provider().displayName} stream available; using external player.`, 'video');
     await playExternally(localPath);
+    return;
+  }
+  // Alt Video (Shield app): Plex titles play in the real Plex app, not this player.
+  if (await handOffToPlexApp(titleKind, jellyfinUrl, token, userId, playbackId)) {
+    logToConsole(`[Video] "${movie.title}" opened in the Plex app.`, 'video');
     return;
   }
 

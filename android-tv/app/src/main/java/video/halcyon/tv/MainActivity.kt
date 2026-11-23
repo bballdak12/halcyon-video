@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -90,6 +91,10 @@ class MainActivity : AppCompatActivity() {
             // MENU is the legend toggle; remote-tv.ts maps ContextMenu to it.
             KeyEvent.KEYCODE_MENU to ("ContextMenu" to "ContextMenu"),
         )
+
+        const val PLEX_PACKAGE = "com.plexapp.android"
+        private val PLEX_ID = Regex("^[A-Za-z0-9]{8,64}$")
+        private val PLEX_KEY = Regex("^[0-9]{1,12}$")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -260,6 +265,8 @@ class MainActivity : AppCompatActivity() {
             builtInZoomControls = false
         }
 
+        web.addJavascriptInterface(PlexBridge(), "HalcyonTV")
+
         web.webViewClient = object : WebViewClient() {
             /**
              * Alt Video fork: the store now runs IN this WebView, so its
@@ -327,6 +334,34 @@ class MainActivity : AppCompatActivity() {
                 )
                 return true
             }
+        }
+    }
+
+    /**
+     * Alt Video fork: `window.HalcyonTV` for the store page (src/shield-handoff.ts).
+     * Plex titles play in the real Plex app — direct play, HDR, lossless audio
+     * passthrough — rather than the page's <video> element.
+     *
+     * Link format: the one Plex for Android TV 2026.19+ uses for its own
+     * home-screen cards, which starts playback (resuming where you left off).
+     * Inputs are validated to plain identifiers so the page can only ever ask
+     * for "play item X on server Y", nothing else.
+     */
+    private inner class PlexBridge {
+        @JavascriptInterface
+        fun playInPlex(machineId: String, ratingKey: String): Boolean {
+            if (!PLEX_ID.matches(machineId) || !PLEX_KEY.matches(ratingKey)) return false
+            val item = "server://$machineId/com.plexapp.plugins.library/library/metadata/$ratingKey"
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                android.net.Uri.parse("plex://watch/video?uri=" + android.net.Uri.encode(item))
+            ).setPackage(PLEX_PACKAGE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(packageManager) == null) {
+                android.util.Log.d("HalcyonTV", "Plex app not installed; using the in-app player")
+                return false
+            }
+            runOnUiThread { startActivity(intent) }
+            return true
         }
     }
 
