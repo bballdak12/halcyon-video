@@ -9,14 +9,17 @@ name: Build Android TV APK
 
 on:
   push:
-    branches: [master, dev]
+    # `shield` is the Alt Video fork's branch: pushing there builds the APK
+    # and publishes it as the `shield-latest` release (see the last step).
+    branches: [master, dev, shield]
     paths: ['android-tv/**', '.github/workflows/build-tv-apk.yml']
   pull_request:
     paths: ['android-tv/**', '.github/workflows/build-tv-apk.yml']
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write: only so the `shield` branch can publish its APK as a release.
+  contents: write
 
 jobs:
   build:
@@ -60,3 +63,17 @@ jobs:
             android-tv/app/build/outputs/apk/debug/*.apk
             android-tv/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      # Alt Video fork: a fixed download URL the Shield can fetch directly
+      # (Downloader app), no GitHub login or zip. Tag is deliberately not
+      # v*.*.* so the image/announce workflows never fire on it.
+      - name: Publish Shield download
+        if: github.event_name == 'push' && github.ref == 'refs/heads/shield'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android-tv/app/build/outputs/apk/debug/app-debug.apk alt-video-tv.apk
+          gh release delete shield-latest --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create shield-latest alt-video-tv.apk -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --title "Shield build" \
+            --notes "Built from $GITHUB_SHA"

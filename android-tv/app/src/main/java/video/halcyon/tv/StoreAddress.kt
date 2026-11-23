@@ -70,12 +70,15 @@ object StoreAddress {
     /**
      * The page this app exists to show.
      *
-     * `tv=1` skips the viewer's user-agent sniff — an Android WebView is a TV
-     * here by construction, and nothing should hinge on a UA string. `tvapp=1`
-     * says a native shell owns the remote: the viewer drops the on-screen BACK
-     * pill and its history-sentinel trap, because this Activity turns the real
-     * BACK key into the store's back action (see MainActivity).
+     * Alt Video fork: load the STORE ITSELF (index.html), not the Remote Play
+     * viewer. The Shield renders the 3D store on its own GPU and Plex streams
+     * straight to it, so no second machine has to render and encode a WebRTC
+     * stream. The d-pad/OK/MENU forwarding and BACK→Escape in MainActivity
+     * work unchanged: the store listens for those keys on window.
+     *
+     * `tv=1&tvapp=1` are kept so the URL still says what it is; the store
+     * ignores them.
      */
     @JvmStatic
-    fun viewerUrl(raw: String?): String? = origin(raw)?.let { "$it/remote.html?tv=1&tvapp=1" }
+    fun viewerUrl(raw: String?): String? = origin(raw)?.let { "$it/?tv=1&tvapp=1" }
 }

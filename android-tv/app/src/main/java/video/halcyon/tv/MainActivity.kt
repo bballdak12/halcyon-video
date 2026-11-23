@@ -261,6 +261,34 @@ class MainActivity : AppCompatActivity() {
         }
 
         web.webViewClient = object : WebViewClient() {
+            /**
+             * Alt Video fork: the store now runs IN this WebView, so its
+             * link-outs (streaming titles, plex.tv/link, project page) would
+             * otherwise replace the store with a page you can't drive with a
+             * remote. Keep the store's own origin here; hand everything else
+             * to Android, which opens the matching app (e.g. a netflix.com
+             * link opens the Netflix app) or a browser if one is installed.
+             */
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest
+            ): Boolean {
+                val target = request.url
+                val store = loadedUrl?.let { android.net.Uri.parse(it) } ?: return false
+                val sameOrigin = target.scheme == store.scheme &&
+                    target.host == store.host && target.port == store.port
+                if (sameOrigin) return false
+                try {
+                    startActivity(
+                        Intent(Intent.ACTION_VIEW, target)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (e: android.content.ActivityNotFoundException) {
+                    android.util.Log.d("HalcyonTV", "No app can open $target")
+                }
+                return true
+            }
+
             override fun onPageFinished(view: WebView, url: String) {
                 if (loadFailed) return // this is the error page finishing, not the store
                 pageLoaded = true

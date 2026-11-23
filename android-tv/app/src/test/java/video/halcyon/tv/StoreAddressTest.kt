@@ -74,7 +74,7 @@ class StoreAddressTest {
         // tv=1 skips the UA sniff; tvapp=1 is what makes remote-tv.ts drop the
         // on-screen BACK pill and the history sentinel this app replaces.
         assertEquals(
-            "http://192.168.1.20:1420/remote.html?tv=1&tvapp=1",
+            "http://192.168.1.20:1420/?tv=1&tvapp=1",
             StoreAddress.viewerUrl("192.168.1.20")
         )
         assertNull(StoreAddress.viewerUrl(""))
